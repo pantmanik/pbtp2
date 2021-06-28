@@ -6,7 +6,7 @@ import tensorflow as tf
 block_len = 512
 block_shift = 128
 # load model
-model = tf.saved_model.load('./pretrained_model/final_model_after_training')
+model = tf.saved_model.load('./model/final_model_after_training')
 infer = model.signatures["serving_default"]
 # load audio file at 16k fs (please change)
 audio,fs = sf.read('./sample_audio/Unp_Front_SSN_135.wav')
