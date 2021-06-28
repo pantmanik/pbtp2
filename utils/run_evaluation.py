@@ -1,48 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Script to process a folder of .wav files with a trained DTLN model. 
-This script supports subfolders and names the processed files the same as the 
-original. The model expects 16kHz audio .wav files. Files with other 
-sampling rates will be resampled. Stereo files will be downmixed to mono.
-
-The idea of this script is to use it for baseline or comparison purpose.
-
-Example call:
-    $python run_evaluation.py -i /name/of/input/folder  \
-                              -o /name/of/output/folder \
-                              -m /name/of/the/model.h5
-
-Author: Nils L. Westhausen (nils.westhausen@uol.de)
-Version: 13.05.2020
-
-This code is licensed under the terms of the MIT-license.
-"""
-
 import soundfile as sf
 import librosa
 import numpy as np
 import os
 import argparse
-from DTLN_model import DTLN_model
+from main_model import model
 
 
 
 def process_file(model, audio_file_name, out_file_name):
-    '''
-    Funtion to read an audio file, rocess it by the network and write the 
-    enhanced audio to .wav file.
-
-    Parameters
-    ----------
-    model : Keras model
-        Keras model, which accepts audio in the size (1,timesteps).
-    audio_file_name : STRING
-        Name and path of the input audio file.
-    out_file_name : STRING
-        Name and path of the target file.
-
-    '''
-    
     # read audio file with librosa to handle resampling and enforce mono
     in_data,fs = librosa.core.load(audio_file_name, sr=16000, mono=True)
     # predict audio with the model
@@ -55,24 +20,6 @@ def process_file(model, audio_file_name, out_file_name):
       
 
 def process_folder(model, folder_name, new_folder_name):
-    '''
-    Function to find .wav files in the folder and subfolders of "folder_name",
-    process each .wav file with an algorithm and write it back to disk in the 
-    folder "new_folder_name". The structure of the original directory is 
-    preserved. The processed files will be saved with the same name as the 
-    original file.
-
-    Parameters
-    ----------
-    model : Keras model
-        Keras model, which accepts audio in the size (1,timesteps).
-    folder_name : STRING
-        Input folder with .wav files.
-    new_folder_name : STRING
-        Traget folder for the processed files.
-
-    '''
-    
     # empty list for file and folder names
     file_names = [];
     directories = [];

@@ -1,17 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-This File contains everything to train the DTLN model.
-
-For running the training see "run_training.py".
-To run evaluation with the provided pretrained model see "run_evaluation.py".
-
-Author: Nils L. Westhausen (nils.westhausen@uol.de)
-Version: 24.06.2020
-
-This code is licensed under the terms of the MIT-license.
-"""
-
-
 import os, fnmatch
 import tensorflow.keras as keras
 from tensorflow.keras.models import Model
@@ -28,21 +14,8 @@ import numpy as np
 
 
 class audio_generator():
-    '''
-    Class to create a Tensorflow dataset based on an iterator from a large scale 
-    audio dataset. This audio generator only supports single channel audio files.
-    '''
-    
+   
     def __init__(self, path_to_input, path_to_s1, len_of_samples, fs, train_flag=False):
-        '''
-        Constructor of the audio generator class.
-        Inputs:
-            path_to_input       path to the mixtures
-            path_to_s1          path to the target source data
-            len_of_samples      length of audio snippets in samples
-            fs                  sampling rate
-            train_flag          flag for activate shuffling of files
-        '''
         # set inputs to properties
         self.path_to_input = path_to_input
         self.path_to_s1 = path_to_s1
@@ -120,9 +93,9 @@ class audio_generator():
                 
 
 
-class DTLN_model():
+class model():
     '''
-    Class to create and train the DTLN model
+    Class to create and train the model
     '''
     
     def __init__(self):
@@ -162,11 +135,6 @@ class DTLN_model():
 
     @staticmethod
     def snr_cost(s_estimate, s_true):
-        '''
-        Static Method defining the cost function. 
-        The negative signal to noise ratio is calculated here. The loss is 
-        always calculated over the last dimension. 
-        '''
 
         # calculating the SNR
         snr = tf.reduce_mean(tf.math.square(s_true), axis=-1, keepdims=True) / \
@@ -180,10 +148,7 @@ class DTLN_model():
         
 
     def lossWrapper(self):
-        '''
-        A wrapper function which returns the loss function. This is done to
-        to enable additional arguments to the loss function if necessary.
-        '''
+
         def lossFunction(y_true,y_pred):
             # calculating loss and squeezing single dimensions away
             loss = tf.squeeze(self.cost_function(y_pred,y_true))
@@ -195,18 +160,9 @@ class DTLN_model():
         return lossFunction
     
     
-
-    '''
-    In the following some helper layers are defined.
-    '''  
     
     def stftLayer(self, x):
-        '''
-        Method for an STFT helper layer used with a Lambda layer. The layer
-        calculates the STFT on the last dimension and returns the magnitude and
-        phase of the STFT.
-        '''
-        
+
         # creating frames from the continuous waveform
         frames = tf.signal.frame(x, self.blockLen, self.block_shift)
         # calculating the fft over the time frames. rfft returns NFFT/2+1 bins.
@@ -218,12 +174,7 @@ class DTLN_model():
         return [mag, phase]
     
     def fftLayer(self, x):
-        '''
-        Method for an fft helper layer used with a Lambda layer. The layer
-        calculates the rFFT on the last dimension and returns the magnitude and
-        phase of the STFT.
-        '''
-        
+
         # expanding dimensions
         frame = tf.expand_dims(x, axis=1)
         # calculating the fft over the time frames. rfft returns NFFT/2+1 bins.
@@ -237,11 +188,6 @@ class DTLN_model():
  
         
     def ifftLayer(self, x):
-        '''
-        Method for an inverse FFT layer used with an Lambda layer. This layer
-        calculates time domain frames from magnitude and phase information. 
-        As input x a list with [mag,phase] is required.
-        '''
         
         # calculating the complex representation
         s1_stft = (tf.cast(x[0], tf.complex64) * 
@@ -251,10 +197,6 @@ class DTLN_model():
     
     
     def overlapAddLayer(self, x):
-        '''
-        Method for an overlap and add helper layer used with a Lambda layer.
-        This layer reconstructs the waveform from a framed signal.
-        '''
 
         # calculating and returning the reconstructed waveform
         return tf.signal.overlap_and_add(x, self.block_shift)
@@ -262,15 +204,6 @@ class DTLN_model():
         
 
     def seperation_kernel(self, num_layer, mask_size, x, stateful=False):
-        '''
-        Method to create a separation kernel. 
-        !! Important !!: Do not use this layer with a Lambda layer. If used with
-        a Lambda layer the gradients are updated correctly.
-
-        Inputs:
-            num_layer       Number of LSTM layers
-            mask_size       Output size of the mask and size of the Dense layer
-        '''
 
         # creating num_layer number of LSTM layers
         for idx in range(num_layer):
@@ -286,15 +219,6 @@ class DTLN_model():
     
     def seperation_kernel_with_states(self, num_layer, mask_size, x, 
                                       in_states):
-        '''
-        Method to create a separation kernel, which returns the LSTM states. 
-        !! Important !!: Do not use this layer with a Lambda layer. If used with
-        a Lambda layer the gradients are updated correctly.
-
-        Inputs:
-            num_layer       Number of LSTM layers
-            mask_size       Output size of the mask and size of the Dense layer
-        '''
         
         states_h = []
         states_c = []
@@ -319,16 +243,7 @@ class DTLN_model():
         # returning the mask and states
         return mask, out_states
 
-    def build_DTLN_model(self, norm_stft=False):
-        '''
-        Method to build and compile the DTLN model. The model takes time domain 
-        batches of size (batchsize, len_in_samples) and returns enhanced clips 
-        in the same dimensions. As optimizer for the Training process the Adam
-        optimizer with a gradient norm clipping of 3 is used. 
-        The model contains two separation cores. The first has an STFT signal 
-        transformation and the second a learned transformation based on 1D-Conv 
-        layer. 
-        '''
+    def build_model(self, norm_stft=False):
         
         # input layer for time signal
         time_dat = Input(batch_shape=(None, None))
@@ -366,11 +281,6 @@ class DTLN_model():
         print(self.model.summary())
         
     def build_DTLN_model_stateful(self, norm_stft=False):
-        '''
-        Method to build stateful DTLN model for real time processing. The model 
-        takes one time domain frame of size (1, blockLen) and one enhanced frame. 
-         
-        '''
         
         # input layer for time signal
         time_dat = Input(batch_shape=(1, self.blockLen))
@@ -433,15 +343,7 @@ class DTLN_model():
         
     def create_tf_lite_model(self, weights_file, target_name, use_dynamic_range_quant=False):
         '''
-        Method to create a tf lite model folder from a weights file. 
-        The conversion creates two models, one for each separation core. 
-        Tf lite does not support complex numbers yet. Some processing must be 
-        done outside the model.
-        For further information and how real time processing can be 
-        implemented see "real_time_processing_tf_lite.py".
-        
-        The conversion only works with TF 2.3.
-
+        Method to create a tf lite model.
         '''
         # check for type
         if weights_file.find('_norm_') != -1:
@@ -584,11 +486,6 @@ class DTLN_model():
     
 
 class InstantLayerNormalization(Layer):
-    '''
-    Class implementing instant layer normalization. It can also be called 
-    channel-wise layer normalization and was proposed by 
-    Luo & Mesgarani (https://arxiv.org/abs/1809.07454v2) 
-    '''
 
     def __init__(self, **kwargs):
         '''
